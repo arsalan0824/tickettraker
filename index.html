@@ -97,6 +97,8 @@
             cursor: crosshair;
             margin-top: 15px;
             border-radius: 8px;
+            /* Prevents the iPad screen from scrolling or bouncing while drawing */
+            touch-action: none; 
         }
 
         .palette-container {
@@ -273,24 +275,21 @@
         }
     }
 
-    // Drawing Logic
-    function startDrawing(e) {
+    // DRAWING LOGIC (Universal for Mouse and Touch)
+    function startDrawing(x, y) {
         isDrawing = true;
-        draw(e);
+        drawAction(x, y);
     }
 
     function stopDrawing() {
+        if (!isDrawing) return;
         isDrawing = false;
         ctx.beginPath();
         saveCanvasImage();
     }
 
-    function draw(e) {
+    function drawAction(x, y) {
         if (!isDrawing) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
 
         ctx.lineWidth = currentToolSize;
         ctx.lineCap = 'round';
@@ -301,6 +300,48 @@
         ctx.beginPath();
         ctx.moveTo(x, y);
     }
+
+    // Helper to extract canvas relative coordinates from mouse/touch events
+    function getCoordinates(e) {
+        const rect = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length > 0) {
+            return {
+                x: e.touches[0].clientX - rect.left,
+                y: e.touches[0].clientY - rect.top
+            };
+        } else {
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+    }
+
+    // Mouse Event Listeners
+    canvas.addEventListener('mousedown', function(e) {
+        const coords = getCoordinates(e);
+        startDrawing(coords.x, coords.y);
+    });
+    canvas.addEventListener('mousemove', function(e) {
+        const coords = getCoordinates(e);
+        drawAction(coords.x, coords.y);
+    });
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // iPad / Touch Event Listeners
+    canvas.addEventListener('touchstart', function(e) {
+        e.preventDefault(); // Prevents iPad screen pull-down gestures
+        const coords = getCoordinates(e);
+        startDrawing(coords.x, coords.y);
+    });
+    canvas.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        const coords = getCoordinates(e);
+        drawAction(coords.x, coords.y);
+    });
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchcancel', stopDrawing);
 
     // Tool Picker Configuration
     function changeColor(color, toolId, size) {
@@ -317,12 +358,6 @@
         localStorage.removeItem('avatarImage');
     }
 
-    // Canvas Event Map
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-
     // Navigation Layer
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -334,7 +369,6 @@
             showScreen('screen-pin');
         } else {
             showScreen('screen-aima');
-            // Delay rendering briefly to allow canvas DOM elements to mount properly
             setTimeout(loadCanvasImage, 50);
             updateUI();
         }
