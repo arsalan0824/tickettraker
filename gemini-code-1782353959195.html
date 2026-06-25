@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket & Roblox Dashboard</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --secondary: #e24a84;
+            --dark: #2c3e50;
+            --light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #eef2f3;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        h2, h3 {
+            color: var(--dark);
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button.secondary {
+            background: var(--secondary);
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .ticket-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #27ae60;
+            margin: 15px 0;
+        }
+
+        .log-msg {
+            color: #7f8c8d;
+            font-style: italic;
+            margin: 10px 0;
+            min-height: 20px;
+        }
+
+        /* DRAWING CANVAS STYLES */
+        #avatarCanvas {
+            border: 3px solid #333;
+            background-color: white;
+            cursor: crosshair;
+            margin-top: 15px;
+            border-radius: 8px;
+        }
+
+        .palette-container {
+            margin-top: 15px;
+            background: #f1f2f6;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            justify-items: center;
+            align-items: center;
+        }
+
+        .color-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-sizing: border-box;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.15);
+        }
+
+        .active-tool {
+            border: 3px solid #333 !important;
+            transform: scale(1.1);
+        }
+
+        #tool-eraser {
+            background-color: #fff;
+            background-image: linear-gradient(45deg, #efefef 25%, transparent 25%), 
+                              linear-gradient(-45deg, #efefef 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #efefef 75%), 
+                              linear-gradient(-45deg, transparent 75%, #efefef 75%);
+            background-size: 8px 8px;
+            background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+            font-weight: bold;
+            font-size: 12px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .utility-btn {
+            grid-column: span 2;
+            width: 100%;
+            height: 32px;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+            background: var(--dark);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="screen-login" class="screen active">
+        <h2>What is your name?</h2>
+        <button onclick="selectUser('Arsalan')">Arsalan</button>
+        <button class="secondary" onclick="selectUser('Aima')">Aima</button>
+    </div>
+
+    <div id="screen-pin" class="screen">
+        <h2>Enter Arsalan's PIN</h2>
+        <input type="password" id="pin-input" placeholder="Enter 4-digit PIN"><br>
+        <button onclick="verifyPin()">Submit</button>
+        <button class="secondary" onclick="goBack()">Back</button>
+        <p id="pin-error" style="color: red;"></p>
+    </div>
+
+    <div id="screen-arsalan" class="screen">
+        <h2>Arsalan's Control Panel</h2>
+        <div class="ticket-display">Aima's Tickets: <span id="arsalan-ticket-count">0</span></div>
+        <p>Aima is currently on page: <strong><span id="arsalan-current-page">None</span></strong></p>
+        <div id="arsalan-log" class="log-msg"></div>
+
+        <hr>
+
+        <h3>Manage Tickets</h3>
+        <button onclick="adjustTickets(1)">+1 Ticket</button>
+        <button onclick="adjustTickets(-1)">-1 Ticket</button>
+        
+        <h3>Update Aima's Page</h3>
+        <input type="text" id="page-input" placeholder="e.g., Chapter 5, Page 42"><br>
+        <button onclick="updatePage()">Update Page</button>
+
+        <br><br>
+        <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+
+    <div id="screen-aima" class="screen">
+        <h2>Aima's Dashboard</h2>
+        <div class="ticket-display">Your Tickets: <span id="aima-ticket-count">0</span></div>
+        <p>You are currently on page: <strong><span id="aima-current-page">None</span></strong></p>
+
+        <hr>
+
+        <h3>Draw Your Avatar!</h3>
+        
+        <canvas id="avatarCanvas" width="320" height="240"></canvas>
+
+        <div class="palette-container">
+            <div class="controls">
+                <button class="color-btn active-tool" style="background-color: #000000;" id="c-black" onclick="changeColor('#000000', 'c-black', 3)"></button>
+                <button class="color-btn" style="background-color: #7f8c8d;" id="c-grey" onclick="changeColor('#7f8c8d', 'c-grey', 3)"></button>
+                <button class="color-btn" style="background-color: #ffdbac;" id="c-skin" onclick="changeColor('#ffdbac', 'c-skin', 3)"></button>
+                <button class="color-btn" style="background-color: #964b00;" id="c-brown" onclick="changeColor('#964b00', 'c-brown', 3)"></button>
+                <button class="color-btn" style="background-color: #e74c3c;" id="c-red" onclick="changeColor('#e74c3c', 'c-red', 3)"></button>
+                <button class="color-btn" style="background-color: #e67e22;" id="c-orange" onclick="changeColor('#e67e22', 'c-orange', 3)"></button>
+                <button class="color-btn" style="background-color: #f1c40f;" id="c-yellow" onclick="changeColor('#f1c40f', 'c-yellow', 3)"></button>
+                <button class="color-btn" style="background-color: #2ecc71;" id="c-green" onclick="changeColor('#2ecc71', 'c-green', 3)"></button>
+                <button class="color-btn" style="background-color: #3498db;" id="c-blue" onclick="changeColor('#3498db', 'c-blue', 3)"></button>
+                <button class="color-btn" style="background-color: #9b59b6;" id="c-purple" onclick="changeColor('#9b59b6', 'c-purple', 3)"></button>
+                <button class="color-btn" style="background-color: #ff69b4;" id="c-pink" onclick="changeColor('#ff69b4', 'c-pink', 3)"></button>
+                <button class="color-btn" style="background-color: #1abc9c;" id="c-teal" onclick="changeColor('#1abc9c', 'c-teal', 3)"></button>
+                
+                <button class="color-btn" id="tool-eraser" onclick="changeColor('#ffffff', 'tool-eraser', 16)">🧽</button>
+                <button class="utility-btn" onclick="clearCanvas()">Clear</button>
+            </div>
+        </div>
+
+        <br>
+        <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+
+</div>
+
+<script>
+    // Tracker System State
+    let state = {
+        tickets: parseInt(localStorage.getItem('tickets')) || 0,
+        currentPage: localStorage.getItem('currentPage') || "Not set yet",
+        avatarImage: localStorage.getItem('avatarImage') || null
+    };
+
+    // Canvas Setup
+    const canvas = document.getElementById('avatarCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let currentPenColor = '#000000';
+    let currentToolSize = 3;
+
+    function saveState() {
+        localStorage.setItem('tickets', state.tickets);
+        localStorage.setItem('currentPage', state.currentPage);
+        updateUI();
+    }
+
+    function saveCanvasImage() {
+        state.avatarImage = canvas.toDataURL();
+        localStorage.setItem('avatarImage', state.avatarImage);
+    }
+
+    function loadCanvasImage() {
+        if (state.avatarImage) {
+            const img = new Image();
+            img.src = state.avatarImage;
+            img.onload = function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            };
+        }
+    }
+
+    // Drawing Logic
+    function startDrawing(e) {
+        isDrawing = true;
+        draw(e);
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+        ctx.beginPath();
+        saveCanvasImage();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        ctx.lineWidth = currentToolSize;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = currentPenColor;
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    // Tool Picker Configuration
+    function changeColor(color, toolId, size) {
+        currentPenColor = color;
+        currentToolSize = size;
+
+        document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active-tool'));
+        document.getElementById(toolId).classList.add('active-tool');
+    }
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        state.avatarImage = null;
+        localStorage.removeItem('avatarImage');
+    }
+
+    // Canvas Event Map
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Navigation Layer
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function selectUser(user) {
+        if (user === 'Arsalan') {
+            showScreen('screen-pin');
+        } else {
+            showScreen('screen-aima');
+            // Delay rendering briefly to allow canvas DOM elements to mount properly
+            setTimeout(loadCanvasImage, 50);
+            updateUI();
+        }
+    }
+
+    function verifyPin() {
+        if (document.getElementById('pin-input').value === '9876') {
+            document.getElementById('pin-input').value = '';
+            document.getElementById('pin-error').innerText = '';
+            showScreen('screen-arsalan');
+            updateUI();
+        } else {
+            document.getElementById('pin-error').innerText = 'Incorrect PIN!';
+        }
+    }
+
+    function goBack() { showScreen('screen-login'); }
+    function logout() { showScreen('screen-login'); }
+
+    // State Synchronization UI
+    function updateUI() {
+        document.getElementById('arsalan-ticket-count').innerText = state.tickets;
+        document.getElementById('aima-ticket-count').innerText = state.tickets;
+        document.getElementById('arsalan-current-page').innerText = state.currentPage;
+        document.getElementById('aima-current-page').innerText = state.currentPage;
+    }
+
+    // Admin Core
+    function adjustTickets(amount) {
+        state.tickets += amount;
+        if (state.tickets < 0) state.tickets = 0;
+        document.getElementById('arsalan-log').innerText = `Tickets modified by ${amount > 0 ? '+' : ''}${amount}.`;
+        saveState();
+    }
+
+    function updatePage() {
+        const pageValue = document.getElementById('page-input').value;
+        if (pageValue.trim() !== "") {
+            state.currentPage = pageValue;
+            document.getElementById('page-input').value = '';
+            document.getElementById('arsalan-log').innerText = `Updated reading page tracker.`;
+            saveState();
+        }
+    }
+
+    updateUI();
+</script>
+
+</body>
+</html>
