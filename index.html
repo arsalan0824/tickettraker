@@ -119,8 +119,39 @@
             border-radius: 6px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
             width: 85%;
             font-size: 14px;
+        }
+
+        .admin-book-list {
+            margin: 15px 0;
+            text-align: left;
+            display: inline-block;
+            width: 85%;
+        }
+
+        .admin-book-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9f9f9;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        .action-link {
+            cursor: pointer;
+            color: var(--primary);
+            font-weight: bold;
+            margin-left: 10px;
+            font-size: 13px;
+        }
+        .action-link.delete {
+            color: var(--secondary);
         }
 
         /* DRAWING CANVAS STYLES */
@@ -234,11 +265,13 @@
         <button onclick="adjustTickets(-1)">-1 Ticket</button>
         <button onclick="adjustTickets(-5)" class="secondary">-5 Tickets</button>
         
-        <h4>Track Books</h4>
+        <h4>Track or Add New Book</h4>
         <input type="text" id="book-name-input" placeholder="Book Title (e.g., Harry Potter)"><br>
         <input type="text" id="book-page-input" placeholder="Current Page (e.g., Page 45)"><br>
-        <button onclick="addOrUpdateBook()">Save Book Tracker</button>
-        <button onclick="clearBooks()" style="background:#7f8c8d;">Clear All Books</button>
+        <button onclick="addOrUpdateBook()">+ Add / Save Book</button>
+
+        <h4>Active Book List (Click to Edit/Remove)</h4>
+        <div id="admin-books-manager" class="admin-book-list"></div>
 
         <h4>Write Notes for Student</h4>
         <input type="text" id="student-note-input" placeholder="e.g., Remember to read for 20 mins!"><br>
@@ -292,16 +325,16 @@
 </div>
 
 <script>
-    // System State with Nested Profiles for Aima and Hamza
-    let state = JSON.parse(localStorage.getItem('eduTrackerState_v2')) || {
+    // System State with Profiles
+    let state = JSON.parse(localStorage.getItem('eduTrackerState_v3')) || {
         Aima: { tickets: 0, note: "Keep up the awesome reading!", books: {}, avatarImage: null },
         Hamza: { tickets: 0, note: "Welcome to your tracker, Hamza!", books: {}, avatarImage: null }
     };
 
-    let currentStudent = 'Aima'; // Active profile context
+    let currentStudent = 'Aima'; 
     let activeUserRole = 'Guest'; 
 
-    // Canvas Configuration variables
+    // Canvas Configuration
     const canvas = document.getElementById('avatarCanvas');
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
@@ -309,15 +342,14 @@
     let currentToolSize = 3;
 
     function saveState() {
-        localStorage.setItem('eduTrackerState_v2', JSON.stringify(state));
+        localStorage.setItem('eduTrackerState_v3', JSON.stringify(state));
         updateUI();
     }
 
-    // Canvas Image Handlers
     function saveCanvasImage() {
         if (activeUserRole === 'Student') {
             state[currentStudent].avatarImage = canvas.toDataURL();
-            localStorage.setItem('eduTrackerState_v2', JSON.stringify(state));
+            localStorage.setItem('eduTrackerState_v3', JSON.stringify(state));
         }
     }
 
@@ -327,13 +359,11 @@
         if (dataUrl) {
             const img = new Image();
             img.src = dataUrl;
-            img.onload = function() {
-                ctx.drawImage(img, 0, 0);
-            };
+            img.onload = function() { ctx.drawImage(img, 0, 0); };
         }
     }
 
-    // DRAWING CANVAS LOGIC
+    // DRAWING LOGIC
     function startDrawing(x, y) { isDrawing = true; drawAction(x, y); }
     function stopDrawing() { if (!isDrawing) return; isDrawing = false; ctx.beginPath(); saveCanvasImage(); }
     
@@ -377,7 +407,7 @@
         saveState();
     }
 
-    // VIEW / DESIGN NAVIGATION LAYERS
+    // NAVIGATION
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
@@ -418,10 +448,12 @@
         updateUI();
     }
 
-    // MASTER ENGINE INTERFACE SYNCER
+    // INTERFACE SYNC ENGINE
     function updateUI() {
         const studentData = state[currentStudent];
+        if (!studentData.books) studentData.books = {};
         
+        // Render Admin Control view elements
         if (activeUserRole === 'Admin') {
             const ticketContainer = document.getElementById('panel-ticket-display');
             ticketContainer.querySelector('span').innerText = studentData.tickets;
@@ -431,8 +463,30 @@
             } else {
                 ticketContainer.classList.remove('ticket-negative');
             }
+
+            // Build dynamic inline book lists for fast admin modification
+            const adminBooksContainer = document.getElementById('admin-books-manager');
+            adminBooksContainer.innerHTML = '';
+            
+            if (Object.keys(studentData.books).length === 0) {
+                adminBooksContainer.innerHTML = '<p style="color:#aaa; font-size:13px; margin:0;">No tracked books yet.</p>';
+            } else {
+                for (let title in studentData.books) {
+                    const row = document.createElement('div');
+                    row.className = 'admin-book-row';
+                    row.innerHTML = `
+                        <span>📖 <strong>${title}</strong>: ${studentData.books[title]}</span>
+                        <div>
+                            <span class="action-link" onclick="editBookPage('${title}')">✏️ Edit Page</span>
+                            <span class="action-link delete" onclick="deleteBook('${title}')">❌ Remove</span>
+                        </div>
+                    `;
+                    adminBooksContainer.appendChild(row);
+                }
+            }
         } 
         
+        // Render Student View elements
         if (activeUserRole === 'Student') {
             document.getElementById('student-title').innerText = `${currentStudent}'s Dashboard`;
             document.getElementById('student-note-text').innerText = studentData.note || "No notes today.";
@@ -446,25 +500,23 @@
                 studentTicketContainer.classList.remove('ticket-negative');
             }
 
-            // Render Book List onto Student Page
             const listContainer = document.getElementById('student-books-list');
             listContainer.innerHTML = '';
-            const books = studentData.books || {};
             
-            if (Object.keys(books).length === 0) {
+            if (Object.keys(studentData.books).length === 0) {
                 listContainer.innerHTML = '<p style="color:#aaa; font-size:13px;">No books logged yet.</p>';
             } else {
-                for (let title in books) {
+                for (let title in studentData.books) {
                     const div = document.createElement('div');
                     div.className = 'book-item';
-                    div.innerHTML = `<span>📖 <strong>${title}</strong></span> <span>${books[title]}</span>`;
+                    div.innerHTML = `<span>📖 <strong>${title}</strong></span> <span>${studentData.books[title]}</span>`;
                     listContainer.appendChild(div);
                 }
             }
         }
     }
 
-    // ARSALAN ADMINISTRATIVE ACTIONS
+    // ADMINISTRATIVE ACTIONS
     function adjustTickets(amount) {
         state[currentStudent].tickets += amount;
         document.getElementById('arsalan-log').innerText = `${currentStudent}'s tickets modified by ${amount > 0 ? '+' : ''}${amount}.`;
@@ -476,7 +528,6 @@
         const status = document.getElementById('book-page-input').value.trim();
         
         if (title && status) {
-            if (!state[currentStudent].books) state[currentStudent].books = {};
             state[currentStudent].books[title] = status;
             document.getElementById('book-name-input').value = '';
             document.getElementById('book-page-input').value = '';
@@ -487,10 +538,22 @@
         }
     }
 
-    function clearBooks() {
-        state[currentStudent].books = {};
-        document.getElementById('arsalan-log').innerText = `Cleared all books for ${currentStudent}.`;
-        saveState();
+    function editBookPage(title) {
+        const currentProgress = state[currentStudent].books[title];
+        const newProgress = prompt(`Update progress for "${title}":`, currentProgress);
+        if (newProgress !== null && newProgress.trim() !== "") {
+            state[currentStudent].books[title] = newProgress.trim();
+            document.getElementById('arsalan-log').innerText = `Updated "${title}" page number.`;
+            saveState();
+        }
+    }
+
+    function deleteBook(title) {
+        if (confirm(`Are you sure you want to remove "${title}"?`)) {
+            delete state[currentStudent].books[title];
+            document.getElementById('arsalan-log').innerText = `Removed "${title}" completely.`;
+            saveState();
+        }
     }
 
     function saveStudentNote() {
@@ -500,7 +563,6 @@
         saveState();
     }
 
-    // Initial check sync execution
     updateUI();
 </script>
 
