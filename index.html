@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ticket & Roblox Dashboard</title>
+    <title>Multi-Student Ticket & Dashboard</title>
     <style>
         :root {
             --primary: #4a90e2;
@@ -42,7 +42,7 @@
             display: block;
         }
 
-        h2, h3 {
+        h2, h3, h4 {
             color: var(--dark);
             margin-bottom: 15px;
         }
@@ -55,7 +55,7 @@
             font-size: 16px;
             border-radius: 6px;
             cursor: pointer;
-            margin: 10px;
+            margin: 5px;
             transition: 0.2s;
         }
 
@@ -65,6 +65,12 @@
 
         button.secondary {
             background: var(--secondary);
+        }
+
+        button.user-btn {
+            display: block;
+            width: 80%;
+            margin: 10px auto;
         }
 
         input[type="text"], input[type="password"] {
@@ -83,6 +89,11 @@
             margin: 15px 0;
         }
 
+        .ticket-negative {
+            color: #ff0000 !important;
+            animation: shake 0.3s ease-in-out;
+        }
+
         .log-msg {
             color: #7f8c8d;
             font-style: italic;
@@ -90,14 +101,35 @@
             min-height: 20px;
         }
 
+        .notes-box {
+            background: #fff8db;
+            border-left: 5px solid #f1c40f;
+            padding: 12px;
+            margin: 15px auto;
+            border-radius: 4px;
+            text-align: left;
+            width: 85%;
+            font-size: 15px;
+        }
+
+        .book-item {
+            background: #f1f2f6;
+            padding: 8px 12px;
+            margin: 5px auto;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            width: 85%;
+            font-size: 14px;
+        }
+
         /* DRAWING CANVAS STYLES */
-        #avatarCanvas {
+        canvas {
             border: 3px solid #333;
             background-color: white;
             cursor: crosshair;
             margin-top: 15px;
             border-radius: 8px;
-            /* Prevents the iPad screen from scrolling or bouncing while drawing */
             touch-action: none; 
         }
 
@@ -135,17 +167,11 @@
             transform: scale(1.1);
         }
 
-        #tool-eraser {
+        .tool-eraser {
             background-color: #fff;
             background-image: linear-gradient(45deg, #efefef 25%, transparent 25%), 
-                              linear-gradient(-45deg, #efefef 25%, transparent 25%), 
-                              linear-gradient(45deg, transparent 75%, #efefef 75%), 
-                              linear-gradient(-45deg, transparent 75%, #efefef 75%);
+                              linear-gradient(-45deg, #efefef 25%, transparent 25%);
             background-size: 8px 8px;
-            background-position: 0 0, 0 4px, 4px -4px, -4px 0;
-            font-weight: bold;
-            font-size: 12px;
-            color: #333;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -161,6 +187,12 @@
             padding: 0;
             background: var(--dark);
         }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
     </style>
 </head>
 <body>
@@ -169,8 +201,9 @@
     
     <div id="screen-login" class="screen active">
         <h2>What is your name?</h2>
-        <button onclick="selectUser('Arsalan')">Arsalan</button>
-        <button class="secondary" onclick="selectUser('Aima')">Aima</button>
+        <button class="user-btn" onclick="selectUser('Arsalan')">Arsalan</button>
+        <button class="user-btn secondary" onclick="selectUser('Aima')">Aima</button>
+        <button class="user-btn secondary" style="background:#9b59b6;" onclick="selectUser('Hamza')">Hamza</button>
     </div>
 
     <div id="screen-pin" class="screen">
@@ -183,33 +216,53 @@
 
     <div id="screen-arsalan" class="screen">
         <h2>Arsalan's Control Panel</h2>
-        <div class="ticket-display">Aima's Tickets: <span id="arsalan-ticket-count">0</span></div>
-        <p>Aima is currently on page: <strong><span id="arsalan-current-page">None</span></strong></p>
-        <div id="arsalan-log" class="log-msg"></div>
+        <div id="arsalan-log" class="log-msg">Select a student to view details.</div>
+
+        <label for="student-select" style="font-weight: bold;">Select Student to Manage:</label><br>
+        <select id="student-select" onchange="loadSelectedStudentData()" style="padding: 8px; margin: 10px 0; font-size: 16px; width: 80%;">
+            <option value="Aima">Aima</option>
+            <option value="Hamza">Hamza</option>
+        </select>
 
         <hr>
 
-        <h3>Manage Tickets</h3>
+        <h3 id="panel-student-title">Managing Aima</h3>
+        <div class="ticket-display" id="panel-ticket-display">Tickets: <span>0</span></div>
+
+        <h4>Manage Tickets</h4>
         <button onclick="adjustTickets(1)">+1 Ticket</button>
         <button onclick="adjustTickets(-1)">-1 Ticket</button>
+        <button onclick="adjustTickets(-5)" class="secondary">-5 Tickets</button>
         
-        <h3>Update Aima's Page</h3>
-        <input type="text" id="page-input" placeholder="e.g., Chapter 5, Page 42"><br>
-        <button onclick="updatePage()">Update Page</button>
+        <h4>Track Books</h4>
+        <input type="text" id="book-name-input" placeholder="Book Title (e.g., Harry Potter)"><br>
+        <input type="text" id="book-page-input" placeholder="Current Page (e.g., Page 45)"><br>
+        <button onclick="addOrUpdateBook()">Save Book Tracker</button>
+        <button onclick="clearBooks()" style="background:#7f8c8d;">Clear All Books</button>
+
+        <h4>Write Notes for Student</h4>
+        <input type="text" id="student-note-input" placeholder="e.g., Remember to read for 20 mins!"><br>
+        <button onclick="saveStudentNote()">Update Note</button>
 
         <br><br>
         <button class="secondary" onclick="logout()">Logout</button>
     </div>
 
-    <div id="screen-aima" class="screen">
-        <h2>Aima's Dashboard</h2>
-        <div class="ticket-display">Your Tickets: <span id="aima-ticket-count">0</span></div>
-        <p>You are currently on page: <strong><span id="aima-current-page">None</span></strong></p>
+    <div id="screen-student" class="screen">
+        <h2 id="student-title">Student Dashboard</h2>
+        <div class="ticket-display" id="student-ticket-display">Your Tickets: <span>0</span></div>
+
+        <div id="student-notes-container" class="notes-box">
+            <strong>Notes from Arsalan:</strong>
+            <p id="student-note-text" style="margin: 5px 0 0 0;">No notes today.</p>
+        </div>
+
+        <h4>Your Reading Tracker:</h4>
+        <div id="student-books-list"></div>
 
         <hr>
 
         <h3>Draw Your Avatar!</h3>
-        
         <canvas id="avatarCanvas" width="320" height="240"></canvas>
 
         <div class="palette-container">
@@ -227,7 +280,7 @@
                 <button class="color-btn" style="background-color: #ff69b4;" id="c-pink" onclick="changeColor('#ff69b4', 'c-pink', 3)"></button>
                 <button class="color-btn" style="background-color: #1abc9c;" id="c-teal" onclick="changeColor('#1abc9c', 'c-teal', 3)"></button>
                 
-                <button class="color-btn" id="tool-eraser" onclick="changeColor('#ffffff', 'tool-eraser', 16)">🧽</button>
+                <button class="color-btn tool-eraser" id="tool-eraser" onclick="changeColor('#ffffff', 'tool-eraser', 16)">🧽</button>
                 <button class="utility-btn" onclick="clearCanvas()">Clear</button>
             </div>
         </div>
@@ -239,14 +292,16 @@
 </div>
 
 <script>
-    // Tracker System State
-    let state = {
-        tickets: parseInt(localStorage.getItem('tickets')) || 0,
-        currentPage: localStorage.getItem('currentPage') || "Not set yet",
-        avatarImage: localStorage.getItem('avatarImage') || null
+    // System State with Nested Profiles for Aima and Hamza
+    let state = JSON.parse(localStorage.getItem('eduTrackerState_v2')) || {
+        Aima: { tickets: 0, note: "Keep up the awesome reading!", books: {}, avatarImage: null },
+        Hamza: { tickets: 0, note: "Welcome to your tracker, Hamza!", books: {}, avatarImage: null }
     };
 
-    // Canvas Setup
+    let currentStudent = 'Aima'; // Active profile context
+    let activeUserRole = 'Guest'; 
+
+    // Canvas Configuration variables
     const canvas = document.getElementById('avatarCanvas');
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
@@ -254,111 +309,75 @@
     let currentToolSize = 3;
 
     function saveState() {
-        localStorage.setItem('tickets', state.tickets);
-        localStorage.setItem('currentPage', state.currentPage);
+        localStorage.setItem('eduTrackerState_v2', JSON.stringify(state));
         updateUI();
     }
 
+    // Canvas Image Handlers
     function saveCanvasImage() {
-        state.avatarImage = canvas.toDataURL();
-        localStorage.setItem('avatarImage', state.avatarImage);
+        if (activeUserRole === 'Student') {
+            state[currentStudent].avatarImage = canvas.toDataURL();
+            localStorage.setItem('eduTrackerState_v2', JSON.stringify(state));
+        }
     }
 
     function loadCanvasImage() {
-        if (state.avatarImage) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const dataUrl = state[currentStudent].avatarImage;
+        if (dataUrl) {
             const img = new Image();
-            img.src = state.avatarImage;
+            img.src = dataUrl;
             img.onload = function() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0);
             };
         }
     }
 
-    // DRAWING LOGIC (Universal for Mouse and Touch)
-    function startDrawing(x, y) {
-        isDrawing = true;
-        drawAction(x, y);
-    }
-
-    function stopDrawing() {
-        if (!isDrawing) return;
-        isDrawing = false;
-        ctx.beginPath();
-        saveCanvasImage();
-    }
-
+    // DRAWING CANVAS LOGIC
+    function startDrawing(x, y) { isDrawing = true; drawAction(x, y); }
+    function stopDrawing() { if (!isDrawing) return; isDrawing = false; ctx.beginPath(); saveCanvasImage(); }
+    
     function drawAction(x, y) {
         if (!isDrawing) return;
-
         ctx.lineWidth = currentToolSize;
         ctx.lineCap = 'round';
         ctx.strokeStyle = currentPenColor;
-
         ctx.lineTo(x, y);
         ctx.stroke();
         ctx.beginPath();
         ctx.moveTo(x, y);
     }
 
-    // Helper to extract canvas relative coordinates from mouse/touch events
     function getCoordinates(e) {
         const rect = canvas.getBoundingClientRect();
         if (e.touches && e.touches.length > 0) {
-            return {
-                x: e.touches[0].clientX - rect.left,
-                y: e.touches[0].clientY - rect.top
-            };
-        } else {
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+            return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
         }
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
 
-    // Mouse Event Listeners
-    canvas.addEventListener('mousedown', function(e) {
-        const coords = getCoordinates(e);
-        startDrawing(coords.x, coords.y);
-    });
-    canvas.addEventListener('mousemove', function(e) {
-        const coords = getCoordinates(e);
-        drawAction(coords.x, coords.y);
-    });
+    canvas.addEventListener('mousedown', e => { const c = getCoordinates(e); startDrawing(c.x, c.y); });
+    canvas.addEventListener('mousemove', e => { const c = getCoordinates(e); drawAction(c.x, c.y); });
     canvas.addEventListener('mouseup', stopDrawing);
     canvas.addEventListener('mouseout', stopDrawing);
-
-    // iPad / Touch Event Listeners
-    canvas.addEventListener('touchstart', function(e) {
-        e.preventDefault(); // Prevents iPad screen pull-down gestures
-        const coords = getCoordinates(e);
-        startDrawing(coords.x, coords.y);
-    });
-    canvas.addEventListener('touchmove', function(e) {
-        e.preventDefault();
-        const coords = getCoordinates(e);
-        drawAction(coords.x, coords.y);
-    });
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); const c = getCoordinates(e); startDrawing(c.x, c.y); });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); const c = getCoordinates(e); drawAction(c.x, c.y); });
     canvas.addEventListener('touchend', stopDrawing);
-    canvas.addEventListener('touchcancel', stopDrawing);
 
-    // Tool Picker Configuration
     function changeColor(color, toolId, size) {
         currentPenColor = color;
         currentToolSize = size;
-
         document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active-tool'));
         document.getElementById(toolId).classList.add('active-tool');
     }
 
     function clearCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        state.avatarImage = null;
-        localStorage.removeItem('avatarImage');
+        state[currentStudent].avatarImage = null;
+        saveState();
     }
 
-    // Navigation Layer
+    // VIEW / DESIGN NAVIGATION LAYERS
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
@@ -366,9 +385,12 @@
 
     function selectUser(user) {
         if (user === 'Arsalan') {
+            activeUserRole = 'Admin';
             showScreen('screen-pin');
         } else {
-            showScreen('screen-aima');
+            activeUserRole = 'Student';
+            currentStudent = user;
+            showScreen('screen-student');
             setTimeout(loadCanvasImage, 50);
             updateUI();
         }
@@ -379,41 +401,106 @@
             document.getElementById('pin-input').value = '';
             document.getElementById('pin-error').innerText = '';
             showScreen('screen-arsalan');
-            updateUI();
+            currentStudent = document.getElementById('student-select').value;
+            loadSelectedStudentData();
         } else {
             document.getElementById('pin-error').innerText = 'Incorrect PIN!';
         }
     }
 
     function goBack() { showScreen('screen-login'); }
-    function logout() { showScreen('screen-login'); }
+    function logout() { activeUserRole = 'Guest'; showScreen('screen-login'); }
 
-    // State Synchronization UI
+    function loadSelectedStudentData() {
+        currentStudent = document.getElementById('student-select').value;
+        document.getElementById('panel-student-title').innerText = `Managing ${currentStudent}`;
+        document.getElementById('student-note-input').value = state[currentStudent].note || "";
+        updateUI();
+    }
+
+    // MASTER ENGINE INTERFACE SYNCER
     function updateUI() {
-        document.getElementById('arsalan-ticket-count').innerText = state.tickets;
-        document.getElementById('aima-ticket-count').innerText = state.tickets;
-        document.getElementById('arsalan-current-page').innerText = state.currentPage;
-        document.getElementById('aima-current-page').innerText = state.currentPage;
-    }
+        const studentData = state[currentStudent];
+        
+        if (activeUserRole === 'Admin') {
+            const ticketContainer = document.getElementById('panel-ticket-display');
+            ticketContainer.querySelector('span').innerText = studentData.tickets;
+            
+            if (studentData.tickets < 0) {
+                ticketContainer.classList.add('ticket-negative');
+            } else {
+                ticketContainer.classList.remove('ticket-negative');
+            }
+        } 
+        
+        if (activeUserRole === 'Student') {
+            document.getElementById('student-title').innerText = `${currentStudent}'s Dashboard`;
+            document.getElementById('student-note-text').innerText = studentData.note || "No notes today.";
+            
+            const studentTicketContainer = document.getElementById('student-ticket-display');
+            studentTicketContainer.querySelector('span').innerText = studentData.tickets;
+            
+            if (studentData.tickets < 0) {
+                studentTicketContainer.classList.add('ticket-negative');
+            } else {
+                studentTicketContainer.classList.remove('ticket-negative');
+            }
 
-    // Admin Core
-    function adjustTickets(amount) {
-        state.tickets += amount;
-        if (state.tickets < 0) state.tickets = 0;
-        document.getElementById('arsalan-log').innerText = `Tickets modified by ${amount > 0 ? '+' : ''}${amount}.`;
-        saveState();
-    }
-
-    function updatePage() {
-        const pageValue = document.getElementById('page-input').value;
-        if (pageValue.trim() !== "") {
-            state.currentPage = pageValue;
-            document.getElementById('page-input').value = '';
-            document.getElementById('arsalan-log').innerText = `Updated reading page tracker.`;
-            saveState();
+            // Render Book List onto Student Page
+            const listContainer = document.getElementById('student-books-list');
+            listContainer.innerHTML = '';
+            const books = studentData.books || {};
+            
+            if (Object.keys(books).length === 0) {
+                listContainer.innerHTML = '<p style="color:#aaa; font-size:13px;">No books logged yet.</p>';
+            } else {
+                for (let title in books) {
+                    const div = document.createElement('div');
+                    div.className = 'book-item';
+                    div.innerHTML = `<span>📖 <strong>${title}</strong></span> <span>${books[title]}</span>`;
+                    listContainer.appendChild(div);
+                }
+            }
         }
     }
 
+    // ARSALAN ADMINISTRATIVE ACTIONS
+    function adjustTickets(amount) {
+        state[currentStudent].tickets += amount;
+        document.getElementById('arsalan-log').innerText = `${currentStudent}'s tickets modified by ${amount > 0 ? '+' : ''}${amount}.`;
+        saveState();
+    }
+
+    function addOrUpdateBook() {
+        const title = document.getElementById('book-name-input').value.trim();
+        const status = document.getElementById('book-page-input').value.trim();
+        
+        if (title && status) {
+            if (!state[currentStudent].books) state[currentStudent].books = {};
+            state[currentStudent].books[title] = status;
+            document.getElementById('book-name-input').value = '';
+            document.getElementById('book-page-input').value = '';
+            document.getElementById('arsalan-log').innerText = `Saved tracker for "${title}".`;
+            saveState();
+        } else {
+            document.getElementById('arsalan-log').innerText = "Please fill in both Book Title and Progress.";
+        }
+    }
+
+    function clearBooks() {
+        state[currentStudent].books = {};
+        document.getElementById('arsalan-log').innerText = `Cleared all books for ${currentStudent}.`;
+        saveState();
+    }
+
+    function saveStudentNote() {
+        const noteText = document.getElementById('student-note-input').value.trim();
+        state[currentStudent].note = noteText;
+        document.getElementById('arsalan-log').innerText = `Updated message note container.`;
+        saveState();
+    }
+
+    // Initial check sync execution
     updateUI();
 </script>
 
